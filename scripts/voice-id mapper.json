@@ -1,0 +1,24 @@
+{
+    "Voices": [
+        {
+            "voice_emotion": "disgust",
+            "voice_id": "Zbqlr4MtsuNf9UAxsv2G"
+        },
+        {
+            "voice_emotion": "fear",
+            "voice_id": "GbbQErkqwE6P1x11Ol4I"
+        },
+        {
+            "voice_emotion": "anger",
+            "voice_id": "PFfIjUGsWsT9uQNYM0Vr"
+        },
+        {
+            "voice_emotion": "sadness",
+            "voice_id": "WAQfkeatyY4UO8Nsamq8"
+        },
+        {
+            "voice_emotion": "joy",
+            "voice_id": "rtza1NeU17DKF7sf5ZAu"
+        }
+    ]
+}
