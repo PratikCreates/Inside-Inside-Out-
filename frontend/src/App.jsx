@@ -62,48 +62,91 @@ function App() {
   // Judge Mode Config State
   const [showConfig, setShowConfig] = useState(false)
   const [apiKeys, setApiKeys] = useState({ gemini: '', eleven: '' })
+  const [keyStatus, setKeyStatus] = useState({ loading: false, error: null, success: false })
+  const [keysDetected, setKeysDetected] = useState(false)
 
-  // Load saved keys on mount
+  // Auto-detect keys on mount
   useEffect(() => {
-    const savedGemini = localStorage.getItem('gemini_key')
-    const savedEleven = localStorage.getItem('eleven_key')
-    if (savedGemini || savedEleven) {
-      setApiKeys({ gemini: savedGemini || '', eleven: savedEleven || '' })
-      // Auto-configure backend if keys exist
-      fetch(`${API_URL}/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gemini_key: savedGemini, eleven_key: savedEleven })
-      }).catch(err => console.error("Auto-config failed:", err))
+    const checkKeys = async () => {
+      const savedGemini = localStorage.getItem('gemini_key')
+      const savedEleven = localStorage.getItem('eleven_key')
+
+      if (savedGemini || savedEleven) {
+        setApiKeys({ gemini: savedGemini || '', eleven: savedEleven || '' })
+        setKeysDetected(true)
+        // Auto-configure backend if keys exist
+        try {
+          await fetch(`${API_URL}/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gemini_key: savedGemini, eleven_key: savedEleven })
+          })
+        } catch (err) {
+          console.error("Auto-config failed:", err)
+        }
+      } else {
+        // No keys found - check backend for .env keys
+        try {
+          const testRes = await fetch(`${API_URL}/warroom`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'test', target_personas: ['Joy'] })
+          })
+
+          if (testRes.ok) {
+            // Backend has keys in .env
+            setKeysDetected(true)
+          } else {
+            // No keys detected - show config popup after a brief delay
+            setTimeout(() => setShowConfig(true), 1500)
+          }
+        } catch (err) {
+          // Backend error - show config popup
+          setTimeout(() => setShowConfig(true), 1500)
+        }
+      }
     }
+    checkKeys()
   }, [])
 
   const handleSaveKeys = async () => {
     console.log("Saving keys...", apiKeys)
     if (!apiKeys.gemini && !apiKeys.eleven) {
-      alert("Please enter at least one API key.")
+      setKeyStatus({ loading: false, error: "Please enter at least one API key.", success: false })
       return
     }
 
+    setKeyStatus({ loading: true, error: null, success: false })
+
     try {
+      // Quick validation test - send a minimal test request
       const res = await fetch(`${API_URL}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gemini_key: apiKeys.gemini, eleven_key: apiKeys.eleven })
       })
+
       if (res.ok) {
-        localStorage.setItem('gemini_key', apiKeys.gemini)
-        localStorage.setItem('eleven_key', apiKeys.eleven)
-        setShowConfig(false)
-        alert("Judge settings connected! Mode Active.")
+        // Save to localStorage
+        if (apiKeys.gemini) localStorage.setItem('gemini_key', apiKeys.gemini)
+        if (apiKeys.eleven) localStorage.setItem('eleven_key', apiKeys.eleven)
+
+        setKeyStatus({ loading: false, error: null, success: true })
+        setKeysDetected(true)
+
+        // Close modal after brief success display
+        setTimeout(() => {
+          setShowConfig(false)
+          setKeyStatus({ loading: false, error: null, success: false })
+        }, 1000)
       } else {
         const err = await res.text()
         console.error("Config error:", err)
-        alert("Failed to configure backend: " + err)
+        setKeyStatus({ loading: false, error: "Failed to validate keys. Check your API keys.", success: false })
       }
     } catch (e) {
       console.error("Save error:", e)
-      alert("Error saving keys: " + e.message)
+      setKeyStatus({ loading: false, error: "Connection error. Make sure backend is running.", success: false })
     }
   }
   const [viewMode, setViewMode] = useState('home') // 'home', 'scenario'
@@ -803,41 +846,133 @@ function App() {
         )}
       </div>
 
-      {/* JUDGE CONFIG MODAL */}
+      {/* JUDGE CONFIG MODAL - Auto-shows if no keys detected */}
       <AnimatePresence>
         {showConfig && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-lg shadow-2xl">
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Lock className="w-6 h-6 text-yellow-500" />
-                Judge Configuration
-              </h2>
-              <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-lg p-4"
+            onClick={() => !keyStatus.loading && setShowConfig(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-lg shadow-2xl relative"
+            >
+              {/* Header */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold flex items-center gap-3 mb-2">
+                  <Lock className="w-6 h-6 text-yellow-500" />
+                  API Configuration
+                </h2>
+                {!keysDetected && (
+                  <div className="mt-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                    <p className="text-sm text-yellow-200/90 leading-relaxed">
+                      <span className="font-bold">No API keys detected.</span> You can either:
+                    </p>
+                    <ul className="text-xs text-yellow-200/70 mt-2 space-y-1 ml-4 list-disc">
+                      <li>Add keys to your <code className="bg-black/30 px-1.5 py-0.5 rounded">.env</code> file and restart, OR</li>
+                      <li>Enter them below for this session (stored locally)</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Input Fields */}
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">Gemini API Key</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+                    Gemini API Key
+                  </label>
                   <input
                     type="password"
                     value={apiKeys.gemini}
-                    onChange={e => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+                    onChange={e => {
+                      setApiKeys({ ...apiKeys, gemini: e.target.value })
+                      setKeyStatus({ loading: false, error: null, success: false })
+                    }}
                     placeholder="AIzaSy..."
-                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-yellow-500/50"
+                    disabled={keyStatus.loading}
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-yellow-500/50 disabled:opacity-50 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">ElevenLabs API Key</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/40 mb-2">
+                    ElevenLabs API Key
+                  </label>
                   <input
                     type="password"
                     value={apiKeys.eleven}
-                    onChange={e => setApiKeys({ ...apiKeys, eleven: e.target.value })}
+                    onChange={e => {
+                      setApiKeys({ ...apiKeys, eleven: e.target.value })
+                      setKeyStatus({ loading: false, error: null, success: false })
+                    }}
                     placeholder="sk_..."
-                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-yellow-500/50"
+                    disabled={keyStatus.loading}
+                    className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-yellow-500/50 disabled:opacity-50 transition-all"
                   />
                 </div>
+
+                {/* Status Messages */}
+                <AnimatePresence mode="wait">
+                  {keyStatus.error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm"
+                    >
+                      {keyStatus.error}
+                    </motion.div>
+                  )}
+                  {keyStatus.success && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-200 text-sm flex items-center gap-2"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      Keys validated! Connecting...
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Action Buttons */}
                 <div className="flex gap-4 pt-4">
-                  <button onClick={() => setShowConfig(false)} className="flex-1 py-3 rounded-xl font-bold hover:bg-white/5 transition-all">Cancel</button>
-                  <button onClick={handleSaveKeys} className="flex-1 py-3 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition-all shadow-lg shadow-yellow-500/20">Save & Connect</button>
+                  <button
+                    onClick={() => setShowConfig(false)}
+                    disabled={keyStatus.loading}
+                    className="flex-1 py-3 rounded-xl font-bold hover:bg-white/5 transition-all disabled:opacity-50"
+                  >
+                    {keysDetected ? 'Close' : 'Skip'}
+                  </button>
+                  <button
+                    onClick={handleSaveKeys}
+                    disabled={keyStatus.loading || (!apiKeys.gemini && !apiKeys.eleven)}
+                    className="flex-1 py-3 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition-all shadow-lg shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {keyStatus.loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                        Validating...
+                      </>
+                    ) : (
+                      'Save & Connect'
+                    )}
+                  </button>
                 </div>
-                <p className="text-xs text-center text-white/20">Keys are stored locally and sent to backend.</p>
+                <p className="text-xs text-center text-white/20">
+                  Keys are stored locally in your browser and sent to the backend for API calls.
+                </p>
               </div>
             </motion.div>
           </motion.div>
