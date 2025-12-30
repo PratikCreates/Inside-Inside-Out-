@@ -558,24 +558,65 @@ function App() {
       <main className="flex-1 relative z-10 flex flex-col items-center justify-center w-full max-w-5xl mx-auto px-4 -mt-10">
 
         {viewMode === 'scenario' ? (
-          /* SCENARIO SETUP FULL SCREEN OVERLAY */
+          /* SCENARIO SETUP FULL SCREEN OVERLAY - VIBRANT VERSION */
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="w-full h-full flex flex-col items-center justify-center relative z-50 max-w-2xl"
           >
-            <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 mb-8 tracking-tighter drop-shadow-lg">
-              Fun Mode
-            </h1>
+            {/* Animated Background Glow */}
+            <div className="absolute inset-0 pointer-events-none">
+              <motion.div
+                className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/30 rounded-full blur-[120px]"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.5, 0.3]
+                }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/30 rounded-full blur-[120px]"
+                animate={{
+                  scale: [1.2, 1, 1.2],
+                  opacity: [0.4, 0.2, 0.4]
+                }}
+                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+              />
+            </div>
 
-            <div className="w-full space-y-8 bg-black/40 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 ring-1 ring-white/5 shadow-2xl">
-              <div className="space-y-4">
-                <label className="text-sm font-bold uppercase tracking-[0.2em] text-white/40 ml-4">Topic of Discussion</label>
+            <motion.h1
+              className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-500 mb-10 tracking-tighter drop-shadow-2xl relative"
+              animate={{
+                backgroundPosition: ['0%', '100%', '0%']
+              }}
+              transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+              style={{ backgroundSize: '200% 200%' }}
+            >
+              <span className="relative">
+                Fun Mode
+                <motion.span
+                  className="absolute -top-2 -right-8 text-2xl"
+                  animate={{ rotate: [0, 14, -14, 0] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                >
+                  ✨
+                </motion.span>
+              </span>
+            </motion.h1>
+
+            <div className="w-full space-y-8 bg-gradient-to-br from-orange-900/20 via-black/50 to-cyan-900/20 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/20 ring-1 ring-cyan-500/20 shadow-[0_0_80px_rgba(6,182,212,0.15)] relative overflow-hidden">
+              {/* Animated border glow */}
+              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-r from-orange-500/20 via-pink-500/20 to-cyan-500/20 opacity-50 blur-xl animate-pulse pointer-events-none" />
+
+              <div className="space-y-5 relative z-10">
+                <label className="text-sm font-bold uppercase tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400 ml-4">
+                  Topic of Discussion
+                </label>
                 <input
                   id="scenario-topic"
                   placeholder="What should the emotions discuss?"
-                  className="w-full bg-white/5 border border-white/10 text-xl p-6 rounded-3xl text-white placeholder-white/20 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all font-light"
+                  className="w-full bg-gradient-to-br from-white/10 to-white/5 border-2 border-cyan-500/30 text-xl p-6 rounded-3xl text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/60 focus:bg-white/15 transition-all font-light shadow-[0_0_30px_rgba(6,182,212,0.1)] focus:shadow-[0_0_40px_rgba(6,182,212,0.3)]"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -585,8 +626,12 @@ function App() {
                     }
                   }}
                 />
-                <div className="flex gap-2 flex-wrap mt-4 ml-4">
-                  {["Tomorrow is Monday", "Pineapple on pizza?", "Go to a new city?"].map(text => (
+                <div className="flex gap-3 flex-wrap mt-4 ml-4">
+                  {[
+                    { text: "Tomorrow is Monday", color: "from-blue-500 to-purple-600" },
+                    { text: "Pineapple on pizza?", color: "from-yellow-500 to-orange-600" },
+                    { text: "Go to a new city?", color: "from-green-500 to-teal-600" }
+                  ].map(({ text, color }) => (
                     <button
                       key={text}
                       onClick={() => {
@@ -597,7 +642,7 @@ function App() {
                           startFunMode(text, mode)
                         }
                       }}
-                      className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-wide text-white/50 hover:bg-white/10 hover:text-white hover:border-white/30 transition-all"
+                      className={`px-5 py-2.5 rounded-full bg-gradient-to-r ${color} text-xs font-extrabold uppercase tracking-wide text-white hover:scale-105 hover:shadow-lg transition-all border border-white/20 hover:border-white/40`}
                     >
                       {text}
                     </button>
@@ -606,19 +651,23 @@ function App() {
               </div>
 
               {/* Advanced Toggle */}
-              <details className="group">
-                <summary className="list-none flex items-center gap-2 cursor-pointer text-white/40 hover:text-white transition-colors ml-4 text-xs uppercase tracking-widest font-bold select-none">
+              <details className="group relative z-10">
+                <summary className="list-none flex items-center gap-2 cursor-pointer text-cyan-300/70 hover:text-cyan-200 transition-colors ml-4 text-xs uppercase tracking-widest font-bold select-none">
                   <span>Advanced Settings</span>
                   <span className="group-open:rotate-180 transition-transform">▼</span>
                 </summary>
-                <div className="mt-6 p-6 bg-black/20 rounded-2xl border border-white/5">
-                  <label className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4 block">Intensity Level</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['short', 'medium', 'long'].map(m => (
-                      <label key={m} className="cursor-pointer">
-                        <input type="radio" name="intensity" value={m} id={`mode-option-${m}`} className="peer hidden" defaultChecked={m === 'short'} />
-                        <div className="p-4 rounded-xl border border-white/10 bg-white/5 text-center peer-checked:bg-white peer-checked:text-black text-white/50 text-sm font-bold uppercase transition-all hover:bg-white/10">
-                          {m}
+                <div className="mt-6 p-6 bg-black/40 rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                  <label className="text-xs font-bold uppercase tracking-widest text-cyan-300/60 mb-4 block">Intensity Level</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { mode: 'short', color: 'from-green-500 to-emerald-600' },
+                      { mode: 'medium', color: 'from-yellow-500 to-orange-600' },
+                      { mode: 'long', color: 'from-red-500 to-rose-600' }
+                    ].map(({ mode, color }) => (
+                      <label key={mode} className="cursor-pointer">
+                        <input type="radio" name="intensity" value={mode} id={`mode-option-${mode}`} className="peer hidden" defaultChecked={mode === 'short'} />
+                        <div className={`p-4 rounded-xl border-2 border-white/10 bg-white/5 text-center peer-checked:bg-gradient-to-br peer-checked:${color} peer-checked:text-white peer-checked:border-white/30 peer-checked:shadow-lg text-white/50 text-sm font-bold uppercase transition-all hover:bg-white/10 hover:scale-105`}>
+                          {mode}
                         </div>
                       </label>
                     ))}
@@ -630,10 +679,10 @@ function App() {
                 </div>
               </details>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-4 pt-6 relative z-10">
                 <button
                   onClick={() => setViewMode('home')}
-                  className="px-8 py-4 rounded-2xl font-bold text-white/40 hover:text-white hover:bg-white/5 transition-all w-1/3"
+                  className="px-8 py-4 rounded-2xl font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all w-1/3 border border-white/10 hover:border-white/20"
                 >
                   Back
                 </button>
@@ -648,9 +697,10 @@ function App() {
                     if (topic) startFunMode(topic, mode)
                     else document.getElementById('scenario-topic').focus()
                   }}
-                  className="flex-1 bg-white text-black rounded-2xl font-bold shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:scale-[1.02] transition-all text-lg tracking-wide border border-white/50"
+                  className="flex-1 bg-gradient-to-r from-orange-500 via-pink-500 to-cyan-500 text-white py-4 rounded-2xl font-black shadow-[0_0_40px_rgba(236,72,153,0.4)] hover:shadow-[0_0_60px_rgba(236,72,153,0.6)] hover:scale-[1.02] transition-all text-lg tracking-wide border-2 border-pink-400/50 hover:border-pink-300 animate-gradient"
+                  style={{ backgroundSize: '200% 200%' }}
                 >
-                  Enter Fun Mode
+                  Enter Fun Mode ⚡
                 </button>
               </div>
             </div>
