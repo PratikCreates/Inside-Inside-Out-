@@ -7,9 +7,15 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from backend.brain import Brain
-from backend.personas import PersonaManager
-from backend.audio import AudioEngine
+# Support both running from parent directory and from backend directory
+try:
+    from backend.brain import Brain
+    from backend.personas import PersonaManager
+    from backend.audio import AudioEngine
+except ModuleNotFoundError:
+    from brain import Brain
+    from personas import PersonaManager
+    from audio import AudioEngine
 
 load_dotenv()
 
