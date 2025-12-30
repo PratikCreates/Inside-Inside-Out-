@@ -1,123 +1,91 @@
-# Inside Inside Out 🧠✨
-> **A Real-Time Multi-Agent Conversational Voice Orchestration Console**
+# Inside Inside Out
 
-![Inside Inside Out Banner](public/hero-characters.png)
+> A real-time voice AI console where five emotions talk, debate, and interrupt each other
 
-## Overview
+<img src="frontend/public/hero-characters.png" width="70%" alt="Inside Inside Out Banner">
 
-**Inside Inside Out** is a real-time, voice-first conversational AI console built for the **ElevenLabs x Google Cloud AI Challenge**.
+## What is this?
 
-It seamlessly integrates **Google Cloud Vertex AI** (for scalable, multi-modal intelligence) and **ElevenLabs** (for ultra-low latency, human-like speech) to bring the "voices in your head" to life.
+**Inside Inside Out** is a voice-first AI console built for the **AI Accelerate: Unlocking New Frontiers** challenge (Google Cloud + ElevenLabs).
 
-> 💡 **Inspiration**: Drawing directly from Pixar's *Inside Out*, we reimagined the "Headquarters" console as a real-time, interactive AI system where emotions act as distinct agents.
+Inspired by Pixar's *Inside Out*, this project lets you talk to five AI personalities (Joy, Sadness, Anger, Fear, and Disgust) who don't just respond to you. They debate with each other, interrupt, and react in real-time, creating genuinely dynamic conversations.
 
-Unlike standard chatbots, this system features **Multi-Agent Orchestration**: five distinct AI personalities (Joy, Sadness, Anger, Fear, Disgust) debate, engage, and interrupt each other in real-time.
+## How it works
 
-## 🏗️ Architecture
+We use a "think slow, act fast" approach:
 
-The system is built on a high-performance event-driven architecture designed for streaming and seamless voice interaction.
+**The Brain** → **Gemini 2.5 Flash Lite** analyzes your input and decides which emotion should respond and what they should say.
 
-```mermaid
-graph TD
-    User((User)) -->|Voice/Text Input| Frontend[React Frontend (Console)]
-    
-    subgraph "Headquarters (Backend)"
-        Frontend -->|API Request| API[FastAPI Server]
-        
-        API -->|Context & History| Brain[Orchestrator Brain]
-        Brain <-->|Inference| Gemini[Google Gemini 1.5/2.0]
-        
-        Brain -->|Selected Persona & Script| API
-        
-        API -->|Text Stream| TTS[Audio Engine]
-        TTS <-->|Synthesis| Eleven[ElevenLabs Turbo v2.5]
-    end
-    
-    TTS -->|Audio Stream| Frontend
-    Frontend -->|Visual Feedback| User
-    
-    style Brain fill:#f9f,stroke:#333,stroke-width:2px
-    style Gemini fill:#4285F4,stroke:#fff,color:#fff
-    style Eleven fill:#fff,stroke:#000,color:#000
-```
+**The Voice** → **ElevenLabs Turbo v2.5** streams the speech back with ultra-low latency, so conversations feel natural and immediate.
 
-## 🚀 Powering the Experience (The Stack)
+**The Interface** → A React app with real-time audio visualization and smooth WebSocket streaming.
 
-### 🧠 Intelligence: Google Cloud Vertex AI
-We utilize **Google Cloud Vertex AI** as the backbone of our "Headquarters" orchestrator.
-*   **Scalable Reasoning**: Uses **Gemini Pro on Vertex AI** to handle complex emotional routing and nuanced script generation.
-*   **Hybrid Architecture**: The backend (`backend/brain.py`) is designed to run natively on Google Cloud (Vertex) for production stability, while offering an API-key fallback for portable demos.
-*   **Why Vertex?**: It provided the reliability and latency required to orchestrate 5 simultaneous agent personalities in real-time.
+<img src="frontend/public/architecture.png" width="80%" alt="System Architecture">
 
-### 🗣️ Voice: ElevenLabs Agents
-Each emotion is given a unique, hyper-realistic voice using **ElevenLabs**.
-*   **Turbo v2.5**: integrated for critical low-latency streaming, allowing emotions to "interrupt" and banter naturally.
-*   **Expressive Scribe**: We don't just generate text; we generate *performance*. The system captures sighs, shouts, and whispers.
-*   **Conversational**: Users interact entirely through speech, fulfilling the challenge's vision of a truly "voice-driven" interface.
+## Tech Stack
 
-### 3. Immersive Console (The "Body")
-built with **React + Vite + Framer Motion**.
-*   *Glassmorphism UI*: Premium, cinematic aesthetic.
-*   *Real-time Visuals*: Dynamic hero elements that scale and react to audio levels.
-*   *Judge Mode*: Fully portable configuration allowing API key injection for demonstrations.
+### AI & Intelligence
+- **Google Gemini 2.5 Flash Lite** (via Vertex AI): Handles emotional reasoning and dialogue generation
+- Fast enough for real-time responses, smart enough for personality consistency
 
----
+### Voice Synthesis
+- **ElevenLabs Turbo v2.5**: Converts text to speech with minimal latency
+- Each emotion has a distinct voice with expressive capabilities (sighs, shouts, whispers)
 
-## ✨ Features
+### Frontend
+- **React + Vite**: Fast dev experience and smooth UI
+- **Framer Motion**: Polished animations
+- **WebSocket streaming**: Real-time audio playback
 
-### 🎙️ The War Room (Call Mode)
-Engage in a continuous, hands-free voice call with the entire cast of emotions. Speak naturally, and watch them debate your life choices in real-time.
+### Backend
+- **FastAPI**: Handles routing and orchestration
+- **Streaming architecture**: Audio chunks flow continuously from ElevenLabs to the browser
 
-### 🎭 Fun Mode
-A specialized "Scenario Simulator." Throw a topic at the emotions (e.g., *"Tomorrow is Monday"*) and watch them perform a scripted, high-energy skit. 
-*   **Auto-generated Scripts**: The Brain writes a screenplay on the fly.
-*   **Full Performance**: All 5 agents act out the scene with perfect timing.
+## Features
 
-### 🎛️ Judge Mode (Portable Demo)
-Designed for hackathons and demos. No complex cloud setup required.
-1.  Click the **Lock Icon** 🔒 in the console.
-2.  Paste your **Gemini** and **ElevenLabs** API keys.
-3.  The system instantly reconfigures itself and goes live.
+### War Room (Call Mode)
+Have a continuous voice conversation with all five emotions. They'll debate your life choices, argue with each other, and interrupt when they feel strongly about something.
 
----
+### Fun Mode
+Give the emotions a scenario (like "It's Monday tomorrow") and watch them perform a scripted comedy skit. The Brain writes the dialogue on the fly, and all five emotions act it out.
 
-## 🛠️ Getting Started
+### Judge Mode
+For demos and hackathons. Just paste your API keys (Gemini + ElevenLabs) in the UI, and the system reconfigures itself instantly - no backend setup needed.
+
+## Getting Started
 
 ### Prerequisites
-*   Python 3.10+
-*   Node.js 18+
-*   Google Gemini API Key
-*   ElevenLabs API Key
+- Python 3.10+
+- Node.js 18+
+- Gemini API Key (Google Cloud)
+- ElevenLabs API Key
 
-### Installation
+### Quick Start
 
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/PratikCreates/Inside-Inside-Out-.git
-    cd Inside-Inside-Out-
-    ```
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/PratikCreates/Inside-Inside-Out.git
+   cd Inside-Inside-Out
+   ```
 
-2.  **Backend Setup**
-    ```bash
-    cd backend
-    pip install -r requirements.txt
-    uvicorn main:app --reload
-    ```
+2. **Set up environment variables**
+   - Copy `.env.example` to `.env`
+   - Add your API keys
 
-3.  **Frontend Setup**
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
+3. **Run the app**
+   - Double-click `run_app.bat` (Windows)
+   - Or manually start backend and frontend:
+     ```bash
+     cd backend && uvicorn main:app --reload
+     cd frontend && npm install && npm run dev
+     ```
 
-4.  **Run the Application**
-    *   **Option A (Easy)**: Double-click `run_app.bat` in the root folder.
-    *   **Option B (Manual)**: Access `http://localhost:5173` after starting backend/frontend manually.
+4. **Open** `http://localhost:5173`
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! Whether it's adding new emotions (Anxiety? Ennui?) or optimizing the orchestration latency, feel free to open a PR.
+Pull requests are welcome. Some ideas: add new emotions, optimize audio streaming, or improve the orchestration logic.
 
 ---
-*Built with ❤️ for the Hackathon*
+
+*Built for the AI Accelerate hackathon*
