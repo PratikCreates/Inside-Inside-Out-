@@ -257,17 +257,19 @@ function App() {
     if (audioRef.current) audioRef.current.pause()
 
     try {
-      recognitionRef.current.start()
-      console.log("Speech recognition started")
+      // Robust start: Abort any ghost instances first
+      recognitionRef.current.abort()
+      setTimeout(() => {
+        try {
+          recognitionRef.current.start()
+          console.log("Speech recognition started successfully")
+        } catch (e) {
+          console.error("Start failed, trying fresh instance:", e)
+          window.location.reload() // Last resort: reload if audio engine completely stuck
+        }
+      }, 100)
     } catch (e) {
       console.error("Failed to start speech recognition:", e)
-      // Maybe it's already running, try stopping and restarting
-      try {
-        recognitionRef.current.stop()
-        setTimeout(() => {
-          try { recognitionRef.current.start() } catch (e2) { console.error(e2) }
-        }, 100)
-      } catch (e2) { }
     }
   }
 
@@ -930,7 +932,7 @@ function App() {
             </button>
 
             {/* FUN MODE BUTTON (Enhanced) */}
-            <button onClick={() => setViewMode('scenario')} className="w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-br from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-[0_0_40px_rgba(192,38,211,0.6)] hover:shadow-[0_0_60px_rgba(192,38,211,0.8)] transition-all group relative z-50 border border-white/20 hover:scale-110" title="Enter Fun Mode">
+            <button onClick={() => setViewMode('scenario')} className="w-20 h-20 rounded-full flex items-center justify-center bg-[#2540CF] hover:bg-[#1E33A5] text-white shadow-[0_0_40px_rgba(37,64,207,0.6)] hover:shadow-[0_0_60px_rgba(37,64,207,0.8)] transition-all group relative z-50 border border-white/20 hover:scale-110" title="Enter Fun Mode">
               <Sparkles className="w-10 h-10 animate-pulse" />
             </button>
 
