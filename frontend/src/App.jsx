@@ -886,7 +886,7 @@ function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-lg shadow-2xl relative"
+              className="bg-neutral-900 border border-white/10 p-6 md:p-8 rounded-3xl w-full max-w-lg shadow-2xl relative"
             >
               {/* Header */}
               <div className="mb-6">
