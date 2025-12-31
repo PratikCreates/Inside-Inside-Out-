@@ -42,6 +42,30 @@ class Brain:
             print(f"Failed to connect via API Key: {e}")
             self.client = None
 
+    async def generate_response_async(self, user_input: str, system_instruction: str = None) -> str:
+        """
+        Asynchronously generates a response for a specific persona.
+        """
+        if not self.client:
+            return "Error: Brain not connected."
+
+        model_id = "gemini-2.5-flash-lite"
+        config = {'system_instruction': system_instruction} if system_instruction else {}
+
+        try:
+            # genai.Client is sync, so we run in a thread to keep the loop free
+            import asyncio
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
+                model=model_id,
+                contents=user_input,
+                config=config
+            )
+            return response.text
+        except Exception as e:
+            print(f"Error generating async content: {e}")
+            return "Thinking..."
+
     def generate_response(self, user_input: str, system_instruction: str = None) -> str:
         """
         Generates a response for a specific persona.

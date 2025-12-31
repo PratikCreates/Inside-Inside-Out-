@@ -220,49 +220,51 @@ async def warroom_endpoint(data: dict):
     
     speaker_order = []
     
-    # 0. Check for @Mentions in user message first (Highest Priority)
-    # Extracts unique mentions in order of appearance
-    mentions = re.findall(r"@(\w+)", user_message)
-    # Filter only valid personas
+    # Determine speaker order based on priority:
+    # 1. Mentioned via @Name
+    # 2. Selected personas from UI (multi-select)
+    # 3. Target persona (single override)
+    # 4. Auto-orchestration (default)
+    
     valid_personas = ["Joy", "Sadness", "Anger", "Fear", "Disgust"]
-    # Keep intersection while preserving order
+    speaker_order = []
+    
+    # Check for @Mentions
+    mentions = re.findall(r"@(\w+)", user_message)
     mentioned_order = [m for m in mentions if m in valid_personas]
-    # Remove duplicates
-    seen = set()
     unique_mentions = []
+    seen = set()
     for m in mentioned_order:
         if m not in seen:
             unique_mentions.append(m)
             seen.add(m)
 
+    ui_selection = data.get("target_personas")
+    
     if unique_mentions:
         speaker_order = unique_mentions
-        print(f"User explicitly mentioned: {speaker_order}")
-    elif data.get("target_personas") and isinstance(data.get("target_personas"), list) and len(data.get("target_personas")) > 0:
-         # UI Selection of multiple agents
-         # Filter valid
-         speaker_order = [p for p in data.get("target_personas") if p in valid_personas]
+        print(f"Priority 1 (@Mention): {speaker_order}")
+    elif ui_selection and isinstance(ui_selection, list) and len(ui_selection) > 0:
+        speaker_order = [p for p in ui_selection if p in valid_personas]
+        print(f"Priority 2 (UI Multi-select): {speaker_order}")
     elif target_persona and target_persona in valid_personas:
-        # Check if user wants to talk to a specific emotion via UI click (Legacy/Fallback)
         speaker_order = [target_persona]
+        print(f"Priority 3 (UI Single): {speaker_order}")
     else:
-        # Determine which 3-4 emotions should respond - more agents now!
-        # Ask the brain to pick the most relevant emotions
+        # Priority 4: Auto-orchestration
+        print("Priority 4 (Auto-orchestration)")
         orchestrator_prompt = f"""
         You are the Headquarters orchestrator. {history_summary}
         
         A user just said: "{user_message}"
         
-        Pick 3-4 emotions who should react to this. They will have a dynamic discussion.
+        Pick 2-3 emotions who should react to this. They will have a dynamic discussion.
         Think about who would naturally respond to this topic.
-        Allow emotions to potentially disagree or build on each other.
         
         Available: Joy, Sadness, Anger, Fear, Disgust.
         
-        CRITICAL: Ensure Disgust and Fear are included if the context arguably fits them. Do not just default to Joy/Anger.
-        
-        Return ONLY a comma-separated list of names in speaking order (3-4 names).
-        Example: Fear, Disgust, Joy, Anger
+        Return ONLY a comma-separated list of names in speaking order.
+        Example: Fear, Disgust, Joy
         """
         
         try:
@@ -271,70 +273,68 @@ async def warroom_endpoint(data: dict):
                 contents=orchestrator_prompt
             )
             order_text = order_response.text.strip().replace(".", "")
-            # Parse names
-            valid = ["Joy", "Sadness", "Anger", "Fear", "Disgust"]
-            speaker_order = [n.strip() for n in order_text.split(",") if n.strip() in valid]
-            if len(speaker_order) < 2:
-                speaker_order = ["Joy", "Fear", "Anger"]  # Fallback with 3 speakers
+            speaker_order = [n.strip() for n in order_text.split(",") if n.strip() in valid_personas]
+            if len(speaker_order) == 0:
+                speaker_order = ["Joy"] 
         except Exception as e:
             print(f"Orchestrator error: {e}")
-            speaker_order = ["Joy", "Sadness", "Anger"]
+            speaker_order = ["Joy", "Sadness"]
     
-    # Build the conversation context with history (already have global from above)
+    # Build tasks for parallel generation
+    import asyncio
+    
+    # Context aggregation
     history_context = ""
     if conversation_history:
         history_context = "--- Previous conversation ---\n" + "\n".join(conversation_history[-6:]) + "\n---\n\n"
-    
-    conversation_log = [f"User: {user_message}"]
-    responses = []
-    
-    for persona_name in speaker_order[:4]:  # Max 4 speakers now!
+
+    tasks = []
+    for persona_name in speaker_order[:4]:
         system_prompt = personas.get_prompt(persona_name)
         if not system_prompt:
             system_prompt = f"You are {persona_name}."
         
-        # Add context of history + what others said in this turn
-        current_context = "\n".join(conversation_log)
+        # In parallel mode, we can't see what others say in the SAME turn easily,
+        # so we tell them the speaking order so they know who else is here.
+        others = [p for p in speaker_order if p != persona_name]
+        others_text = f"You are speaking along with: {', '.join(others)}." if others else ""
+        
         full_prompt = f"""
         {system_prompt}
         
         {history_context}
-        --- Current conversation ---
-        {current_context}
+        --- Current Context ---
+        User said: "{user_message}"
+        {others_text}
         ---
         
-        Now respond as {persona_name}. Keep it under 2 sentences. React to what was said.
-        Remember the context from previous messages if relevant.
+        Now respond as {persona_name}. Keep it under 2 sentences. Max 30 words.
+        React directly to the user's message.
         IMPORTANT: Do NOT start your response with your name or any prefix like "{persona_name}:" - just speak directly.
         """
+        tasks.append(brain.generate_response_async(user_message, system_instruction=full_prompt))
+
+    # Run everything in parallel
+    results = await asyncio.gather(*tasks)
+    
+    responses = []
+    for i, persona_name in enumerate(speaker_order[:4]):
+        response_text = results[i].strip()
         
-        response_text = brain.generate_response(user_message, system_instruction=full_prompt)
-        
-        # Simple cleanup - only remove the exact persona name prefix if present
-        response_text = response_text.strip()
-        # Only remove if response starts with exact persona name followed by colon
+        # Cleanup
         if response_text.lower().startswith(f"{persona_name.lower()}:"):
             response_text = response_text[len(persona_name)+1:].strip()
-        # Also check for common abbreviations
-        short_names = {"Joy": "Jy", "Sadness": "Sd", "Anger": "Ag", "Fear": "Fr", "Disgust": "Dg"}
-        short = short_names.get(persona_name, "")
-        if short and response_text.lower().startswith(f"{short.lower()}:"):
-            response_text = response_text[len(short)+1:].strip()
-        
-        # Log it for current turn context
-        conversation_log.append(f"{persona_name}: {response_text}")
         
         responses.append({
             "persona": persona_name,
             "text": response_text
         })
     
-    # Save this exchange to history for future context
+    # Save to history
     conversation_history.append(f"User: {user_message}")
     for r in responses:
         conversation_history.append(f"{r['persona']}: {r['text']}")
     
-    # Trim history if too long
     if len(conversation_history) > MAX_HISTORY * 3:
         conversation_history = conversation_history[-MAX_HISTORY * 3:]
     
@@ -351,6 +351,7 @@ async def fun_mode_stream_endpoint(data: dict):
     """
     user_message = data.get("message")
     mode = data.get("mode", "default")
+    target_personas = data.get("target_personas")  # NEW: Respect selected personas
     
     if not user_message:
         raise HTTPException(status_code=400, detail="Message required")
@@ -360,8 +361,19 @@ async def fun_mode_stream_endpoint(data: dict):
     if conversation_history:
         history_context = "Previous Context:\n" + "\n".join(conversation_history[-6:])
 
-    # Define constraints based on mode
-    if mode == "long":
+    # Define constraints based on target selection or mode
+    valid_personas = ["Joy", "Sadness", "Anger", "Fear", "Disgust"]
+    
+    if target_personas and isinstance(target_personas, list) and len(target_personas) > 0:
+        # User has selected specific personas - ONLY use those
+        selected = [p for p in target_personas if p in valid_personas]
+        if selected:
+            persona_list = ", ".join(selected)
+            constraints = f"ONLY involve these emotions: {persona_list}. They are the ONLY ones who should speak. Create a dynamic discussion with {len(selected)} emotion(s) - about 3-5 turns total."
+        else:
+            # Fallback if invalid selection
+            constraints = "Involve 3 key emotions. Quick, funny reaction (4-5 turns)."
+    elif mode == "long":
         constraints = "Involve ALL 5 emotions. Create a long, complex, high-energy discussion (10-12 turns). Every emotion MUST be passionate!"
     elif mode == "medium":
         constraints = "Involve 4 emotions. Balanced high-energy discussion (7-9 turns)."
@@ -474,26 +486,30 @@ async def fun_mode_stream_endpoint(data: dict):
 
     return StreamingResponse(stream_with_buffer(), media_type="application/x-ndjson")
 
+@app.get("/api/warroom/audio")
 @app.post("/api/warroom/audio")
-async def warroom_audio_endpoint(data: dict):
+async def warroom_audio_endpoint(data: dict = None, persona: str = None, text: str = None):
     """
-    Generate audio for a single warroom response.
-    Called by frontend for each item in the responses array.
+    Generate audio for a single response. Supports both POST (JSON) and GET (Query).
     """
-    persona_name = data.get("persona", "Joy")
-    text = data.get("text", "")
+    if data:
+        persona_name = data.get("persona", "Joy")
+        text_content = data.get("text", "")
+    else:
+        persona_name = persona or "Joy"
+        text_content = text or ""
     
-    if not text:
+    if not text_content:
         raise HTTPException(status_code=400, detail="Text required")
     
     voice_id = personas.get_voice_id(persona_name)
-    audio_stream = audio_engine.generate_speech_stream(text, voice_id)
+    audio_stream = audio_engine.generate_speech_stream(text_content, voice_id)
     
     if audio_stream:
         def iter_audio():
             yield from audio_stream
         
-        safe_text = urllib.parse.quote(text.replace("\n", " ")[:500])
+        safe_text = urllib.parse.quote(text_content.replace("\n", " ")[:500])
         return StreamingResponse(
             iter_audio(),
             media_type="audio/mpeg",

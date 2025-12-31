@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, Send, MicOff, Sparkles, MessageSquare, Phone, PhoneOff, Smile, Frown, Flame, Ghost, Skull, SlidersHorizontal, Lock } from 'lucide-react'
+import { Mic, Send, MicOff, Sparkles, MessageSquare, Phone, PhoneOff, Smile, Frown, Flame, Ghost, Skull, SlidersHorizontal, Lock, ArrowRight, Play } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './index.css'
 
@@ -257,19 +257,17 @@ function App() {
     if (audioRef.current) audioRef.current.pause()
 
     try {
-      // Robust start: Abort any ghost instances first
-      recognitionRef.current.abort()
-      setTimeout(() => {
-        try {
-          recognitionRef.current.start()
-          console.log("Speech recognition started successfully")
-        } catch (e) {
-          console.error("Start failed, trying fresh instance:", e)
-          window.location.reload() // Last resort: reload if audio engine completely stuck
-        }
-      }, 100)
+      recognitionRef.current.start()
+      console.log("Speech recognition started")
     } catch (e) {
       console.error("Failed to start speech recognition:", e)
+      // Maybe it's already running, try stopping and restarting
+      try {
+        recognitionRef.current.stop()
+        setTimeout(() => {
+          try { recognitionRef.current.start() } catch (e2) { console.error(e2) }
+        }, 100)
+      } catch (e2) { }
     }
   }
 
@@ -335,10 +333,6 @@ function App() {
         const personaName = item.persona
         const responseText = item.text  // Use text as-is from backend
 
-        // Switch active persona
-        const p = PERSONAS.find(p => p.name === personaName)
-        if (p) setActivePersona(p)
-
         // Fetch audio for this segment FIRST (don't show text yet)
         const audioRes = await fetch(`${API_URL}/warroom/audio`, {
           method: "POST",
@@ -351,9 +345,12 @@ function App() {
 
         audioRef.current.src = audioUrl
 
-        // Wait for audio to be ready, then show text AND play simultaneously
+        // Wait for audio to be ready, then switch persona, show text, AND play simultaneously
         audioRef.current.oncanplaythrough = () => {
-          // NOW show the subtitle (synced with audio start)
+          // Switch persona NOW (synchronized with text and audio)
+          const p = PERSONAS.find(p => p.name === personaName)
+          if (p) setActivePersona(p)
+          // Show the subtitle (synced with audio start)
           setLastMessage({ role: 'ai', text: responseText, persona: personaName })
           setIsPlaying(true)
           audioRef.current.play().catch(e => console.error(e))
@@ -407,7 +404,11 @@ function App() {
       const response = await fetch(`${API_URL}/funmode/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: topic, mode: mode })
+        body: JSON.stringify({
+          message: topic,
+          mode: mode,
+          target_personas: selectedPersonas.length > 0 ? selectedPersonas : undefined
+        })
       })
 
       const reader = response.body.getReader()
@@ -493,15 +494,14 @@ function App() {
     isQueuePlayingRef.current = true
     const item = audioQueueRef.current.shift()
 
-    // Switch Persona
-    const p = PERSONAS.find(p => p.name === item.persona)
-    if (p) setActivePersona(p)
-
     // Play
     audioRef.current.src = item.audioUrl
 
     await new Promise((resolve) => {
       audioRef.current.oncanplaythrough = () => {
+        // Switch persona NOW (synchronized with text and audio)
+        const p = PERSONAS.find(p => p.name === item.persona)
+        if (p) setActivePersona(p)
         setLastMessage({ role: 'ai', text: item.text, persona: item.persona })
         setIsPlaying(true)
         audioRef.current.play().catch(e => {
@@ -560,159 +560,132 @@ function App() {
       <main className="flex-1 relative z-10 flex flex-col items-center justify-center w-full max-w-5xl mx-auto px-4 -mt-10">
 
         {viewMode === 'scenario' ? (
-          /* SCENARIO SETUP FULL SCREEN OVERLAY - VIBRANT VERSION */
+          /* FUN MODE MODAL - CLEAN DARK UI WITH HQ BACKGROUND */
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full h-full flex flex-col items-center justify-center relative z-50 max-w-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+            onClick={() => setViewMode('home')}
           >
-            {/* Animated Background Glow - Subtle */}
-            <div className="absolute inset-0 pointer-events-none">
-              <motion.div
-                className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/15 rounded-full blur-[100px]"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.15, 0.25, 0.15]
-                }}
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              />
-              <motion.div
-                className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/15 rounded-full blur-[100px]"
-                animate={{
-                  scale: [1.2, 1, 1.2],
-                  opacity: [0.2, 0.1, 0.2]
-                }}
-                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-              />
+            {/* Background with HQ Image */}
+            <div className="absolute inset-0 bg-black">
+              <img src="/hq-bg.png" className="absolute inset-0 w-full h-full object-cover opacity-70" />
+              <div className="absolute inset-0 bg-gradient-to-b from-blue-900/40 via-blue-950/30 to-black/70" />
+              <div className="absolute inset-0 backdrop-blur-lg" />
             </div>
 
-            <motion.h1
-              className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-500 mb-10 tracking-tighter drop-shadow-2xl relative"
-              animate={{
-                backgroundPosition: ['0%', '100%', '0%']
-              }}
-              transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-              style={{ backgroundSize: '200% 200%' }}
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-blue-900/30 border border-cyan-400/30 backdrop-blur-2xl rounded-3xl shadow-[0_0_100px_rgba(96,165,250,0.4)] overflow-hidden relative p-12 z-10"
             >
-              <span className="relative">
-                Fun Mode
-                <motion.span
-                  className="absolute -top-2 -right-8 text-2xl"
-                  animate={{ rotate: [0, 14, -14, 0] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                >
-                  ✨
-                </motion.span>
-              </span>
-            </motion.h1>
+              {/* Close Button */}
+              <button
+                onClick={() => setViewMode('home')}
+                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-200/70 hover:text-cyan-100 transition-all"
+              >
+                <span className="text-2xl leading-none">×</span>
+              </button>
 
-            <div className="w-full space-y-8 bg-gradient-to-br from-orange-900/15 via-black/60 to-cyan-900/15 backdrop-blur-3xl p-10 rounded-[3rem] border border-white/10 ring-1 ring-cyan-500/10 shadow-[0_0_40px_rgba(6,182,212,0.08)] relative overflow-hidden">
-              {/* Animated border glow - Subtle */}
-              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-cyan-500/10 opacity-30 blur-xl animate-pulse pointer-events-none" />
+              {/* Header */}
+              <div className="mb-10">
+                <div className="flex items-center gap-3 mb-3">
+                  <Sparkles className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-sm font-bold tracking-[0.3em] uppercase text-cyan-300/80">Fun Mode</h2>
+                </div>
+                <h1 className="text-4xl font-black text-white mb-2">What's on your mind?</h1>
+                <p className="text-blue-200/80 text-base">Watch your emotions discuss it live</p>
+              </div>
 
-              <div className="space-y-5 relative z-10">
-                <label className="text-sm font-bold uppercase tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400 ml-4">
-                  Topic of Discussion
-                </label>
-                <input
+              {/* Topic Input */}
+              <div className="mb-8">
+                <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3 block">Topic</label>
+                <textarea
                   id="scenario-topic"
-                  placeholder="What should the emotions discuss?"
-                  className="w-full bg-gradient-to-br from-white/10 to-white/5 border-2 border-cyan-500/20 text-xl p-6 rounded-3xl text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/40 focus:bg-white/15 transition-all font-light shadow-[0_0_20px_rgba(6,182,212,0.05)] focus:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+                  placeholder="Type something or pick a suggestion..."
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-2xl font-semibold text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-all resize-none min-h-[120px] leading-tight"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
                       const topic = e.target.value
-                      const mode = document.getElementById('advanced-mode-select')?.value || 'short'
-                      if (topic) startFunMode(topic, mode)
+                      const mode = document.querySelector('input[name="intensity"]:checked')?.value || 'short'
+                      if (topic.trim()) startFunMode(topic, mode)
                     }
                   }}
                 />
-                <div className="flex gap-3 flex-wrap mt-4 ml-4">
+              </div>
+
+              {/* Suggestions */}
+              <div className="mb-8">
+                <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3 block">Suggestions</label>
+                <div className="grid grid-cols-1 gap-2">
                   {[
-                    { text: "Tomorrow is Monday", color: "from-blue-500 to-purple-600" },
-                    { text: "Pineapple on pizza?", color: "from-yellow-500 to-orange-600" },
-                    { text: "Go to a new city?", color: "from-green-500 to-teal-600" }
-                  ].map(({ text, color }) => (
+                    { text: "Tomorrow is Monday", icon: "📅" },
+                    { text: "Pineapple on pizza?", icon: "🍕" },
+                    { text: "Go to a new city?", icon: "✈️" }
+                  ].map(({ text, icon }) => (
                     <button
                       key={text}
                       onClick={() => {
-                        const input = document.getElementById('scenario-topic')
-                        if (input) {
-                          input.value = text
-                          const mode = document.getElementById('advanced-mode-select')?.value || 'short'
-                          startFunMode(text, mode)
-                        }
+                        // Auto-submit with 'short' mode
+                        startFunMode(text, 'short')
                       }}
-                      className={`px-5 py-2.5 rounded-full bg-gradient-to-r ${color} text-xs font-extrabold uppercase tracking-wide text-white hover:scale-105 hover:shadow-lg transition-all border border-white/20 hover:border-white/40`}
+                      className="group relative w-full text-left px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200"
                     >
-                      {text}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{icon}</span>
+                        <span className="font-medium text-white/80 group-hover:text-white">{text}</span>
+                        <ArrowRight className="ml-auto w-4 h-4 text-white/30 group-hover:text-white/80 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all" />
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Advanced Toggle */}
-              <details className="group relative z-10">
-                <summary className="list-none flex items-center gap-2 cursor-pointer text-cyan-300/70 hover:text-cyan-200 transition-colors ml-4 text-xs uppercase tracking-widest font-bold select-none">
-                  <span>Advanced Settings</span>
-                  <span className="group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div className="mt-6 p-6 bg-black/40 rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
-                  <label className="text-xs font-bold uppercase tracking-widest text-cyan-300/60 mb-4 block">Intensity Level</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { mode: 'short', color: 'from-green-500 to-emerald-600' },
-                      { mode: 'medium', color: 'from-yellow-500 to-orange-600' },
-                      { mode: 'long', color: 'from-red-500 to-rose-600' }
-                    ].map(({ mode, color }) => (
-                      <label key={mode} className="cursor-pointer">
-                        <input type="radio" name="intensity" value={mode} id={`mode-option-${mode}`} className="peer hidden" defaultChecked={mode === 'short'} />
-                        <div className={`p-4 rounded-xl border-2 border-white/10 bg-white/5 text-center peer-checked:bg-gradient-to-br peer-checked:${color} peer-checked:text-white peer-checked:border-white/30 peer-checked:shadow-lg text-white/50 text-sm font-bold uppercase transition-all hover:bg-white/10 hover:scale-105`}>
-                          {mode}
-                        </div>
-                      </label>
-                    ))}
-                    {/* Hidden select for easier grab */}
-                    <select id="advanced-mode-select" className="hidden">
-                      {['short', 'medium', 'long'].map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
+              {/* Duration Options */}
+              <div className="mb-10">
+                <label className="text-xs font-bold uppercase tracking-widest text-white/40 mb-3 block">Duration</label>
+                <div className="flex bg-black/30 backdrop-blur-sm p-1.5 rounded-xl w-full border border-white/10">
+                  {[
+                    { mode: 'short', label: 'Brief' },
+                    { mode: 'medium', label: 'Balanced' },
+                    { mode: 'long', label: 'Extended' }
+                  ].map(({ mode, label }) => (
+                    <label key={mode} className="flex-1 cursor-pointer">
+                      <input type="radio" name="intensity" value={mode} className="peer hidden" defaultChecked={mode === 'short'} />
+                      <div className="py-2.5 text-center rounded-lg text-sm font-bold text-white/40 peer-checked:bg-white/10 peer-checked:text-white transition-all">
+                        {label}
+                      </div>
+                    </label>
+                  ))}
                 </div>
-              </details>
-
-              <div className="flex gap-4 pt-6 relative z-10">
-                <button
-                  onClick={() => setViewMode('home')}
-                  className="px-8 py-4 rounded-2xl font-bold text-white/60 hover:text-white hover:bg-white/10 transition-all w-1/3 border border-white/10 hover:border-white/20"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => {
-                    const topic = document.getElementById('scenario-topic').value
-                    // Hacky way to get checked radio without managing state for this form
-                    let mode = 'short'
-                    if (document.getElementById('mode-option-medium').checked) mode = 'medium'
-                    if (document.getElementById('mode-option-long').checked) mode = 'long'
-
-                    if (topic) startFunMode(topic, mode)
-                    else document.getElementById('scenario-topic').focus()
-                  }}
-                  className="flex-1 bg-gradient-to-r from-orange-500 via-pink-500 to-cyan-500 text-white py-4 rounded-2xl font-black shadow-[0_0_40px_rgba(236,72,153,0.4)] hover:shadow-[0_0_60px_rgba(236,72,153,0.6)] hover:scale-[1.02] transition-all text-lg tracking-wide border-2 border-pink-400/50 hover:border-pink-300 animate-gradient"
-                  style={{ backgroundSize: '200% 200%' }}
-                >
-                  Enter Fun Mode ⚡
-                </button>
               </div>
-            </div>
+
+              {/* Start Button */}
+              <button
+                onClick={() => {
+                  const topic = document.getElementById('scenario-topic').value
+                  const mode = document.querySelector('input[name="intensity"]:checked')?.value || 'short'
+                  if (topic.trim()) startFunMode(topic, mode)
+                  else document.getElementById('scenario-topic').focus()
+                }}
+                className="w-full py-4 rounded-xl bg-cyan-500 text-white font-black tracking-wider hover:bg-cyan-600 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 flex items-center justify-center gap-3"
+              >
+                <span>START</span>
+                <Play className="w-5 h-5 fill-current" />
+              </button>
+            </motion.div>
           </motion.div>
         ) : (
           /* REGULAR HOME VIEW - CENTERED COMMAND CENTER */
-          <div className="flex-1 w-full flex flex-col items-center justify-center relative z-20 pb-8">
+          <div className="flex-1 w-full flex flex-col items-center justify-center relative z-20 pb-20">
 
             {/* CORE UNIT: Hero + Agents (Grouped to move together) */}
-            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-20">
+            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-32">
 
               {/* 1. HERO VISUAL */}
               <AnimatePresence mode="wait">
@@ -777,9 +750,9 @@ function App() {
                 </motion.div>
               </AnimatePresence>
 
-              {/* 2. ENLARGED COMMAND DECK - Below Hero, closer spacing */}
+              {/* 2. ENLARGED COMMAND DECK - Floating below Hero */}
               {!isProcessing && (
-                <div className="flex flex-col items-center gap-4 group mt-12">
+                <div className="flex flex-col items-center gap-4 group mt-4">
                   <div className="flex gap-4 md:gap-8 justify-center items-center px-12 py-6 rounded-[3rem] bg-neutral-900/80 border border-white/20 backdrop-blur-3xl shadow-[0_30px_80px_rgba(0,0,0,0.9)] transition-all hover:bg-neutral-900/90 border-t-white/30 ring-1 ring-white/5">
                     {PERSONAS.filter(p => p.name !== "Headquarters").map(p => {
                       const isSelected = selectedPersonas.includes(p.name)
@@ -798,8 +771,8 @@ function App() {
                               {p.icon}
                             </div>
                           </div>
-                          {/* Name Label - Moved to bottom for cleaner look */}
-                          <div className="absolute -bottom-10 opacity-0 group-hover/btn:opacity-100 transition-all pointer-events-none scale-100 z-20">
+                          {/* Name Label - Always Visible */}
+                          <div className="absolute -top-14 opacity-100 transition-all pointer-events-none scale-100">
                             <span className="bg-black/90 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white border border-white/20 shadow-xl">
                               {p.name}
                             </span>
@@ -807,70 +780,21 @@ function App() {
                         </button>
                       )
                     })}
-                    <div className="w-0" /> {/* Spacer removed, Reset button moved to Input Bar */}
+                    <div className="w-[1px] h-20 bg-white/10 mx-2" />
+                    <button
+                      onClick={() => setSelectedPersonas(PERSONAS.filter(p => p.name !== 'Headquarters').map(p => p.name))}
+                      className="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:text-white hover:bg-white/10 transition-all text-3xl" title="Reset All"
+                    >
+                      ↺
+                    </button>
                   </div>
                 </div>
               )}
 
-              {/* INPUT BAR - INTEGRATED INTO FLOW */}
-              <div className="w-full max-w-4xl px-6 relative z-50 mt-8">
-                <div className="w-full relative group">
-                  <div className={`absolute -inset-1 rounded-full bg-gradient-to-r ${activePersona.color} opacity-0 group-focus-within:opacity-20 blur-xl transition-all duration-1000`} />
-
-                  <div className="relative w-full bg-black/80 backdrop-blur-3xl border border-white/10 rounded-full flex items-center shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
-
-                    <input
-                      value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSend(inputText)}
-                      placeholder={`Direct message to ${activePersona.name === 'Headquarters' ? 'Headquarters' : activePersona.name}...`}
-                      className="flex-1 bg-white/10 h-16 md:h-20 px-8 text-lg text-white placeholder-white/40 focus:outline-none font-light tracking-wide rounded-l-full"
-                    />
-
-                    <div className="flex items-center gap-3 pr-4">
-                      {/* Reset Selection Button (Moved Here) */}
-                      <button
-                        onClick={() => setSelectedPersonas(PERSONAS.filter(p => p.name !== 'Headquarters').map(p => p.name))}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all relative group"
-                        title="Reset Characters"
-                      >
-                        <span className="text-xl">↺</span>
-                      </button>
-
-                      <div className="w-[1px] h-10 bg-white/10 mx-1" />
-
-                      <AnimatePresence>
-                        {inputText && (
-                          <motion.button
-                            initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                            onClick={() => handleSend(inputText)}
-                            className="p-3 rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-all"
-                          >
-                            <Send className="w-5 h-5" />
-                          </motion.button>
-                        )}
-                      </AnimatePresence>
-
-                      <button
-                        onClick={toggleCall}
-                        className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl
-                            ${callActiveState
-                            ? 'bg-red-600 text-white shadow-[0_0_40px_rgba(220,38,38,0.6)] animate-pulse scale-105'
-                            : 'bg-gradient-to-br from-white/10 to-white/5 border border-white/10 text-white hover:scale-105 hover:border-white/30'
-                          }
-                          `}
-                      >
-                        {callActiveState ? <PhoneOff className="w-6 h-6 md:w-7 md:h-7" /> : <Mic className="w-6 h-6 md:w-7 md:h-7" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
             </div>
 
-            {/* 3. CAPTION / CAPTION AREA - Dynamic font scaling */}
-            <div className="absolute bottom-96 w-full text-center min-h-[120px] flex flex-col items-center justify-center max-w-4xl px-8 pointer-events-none">
+            {/* 3. CAPTION / CAPTION AREA - Cinematic floating captions */}
+            <div className="absolute bottom-64 w-full text-center min-h-[120px] flex flex-col items-center justify-center max-w-4xl px-8 pointer-events-none">
 
               {/* AI Response / Captions */}
               <AnimatePresence mode="wait">
@@ -888,10 +812,7 @@ function App() {
                         {/* Redundant name removed to prevent overlap */}
                       </div>
                     )}
-                    <h2 className={`font-medium leading-[1.2] tracking-tight text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] max-w-3xl ${lastMessage.text.length > 200 ? 'text-xl md:text-2xl lg:text-3xl' : // Very long
-                      lastMessage.text.length > 120 ? 'text-2xl md:text-3xl lg:text-4xl' : // Long
-                        'text-3xl md:text-4xl lg:text-5xl' // Normal
-                      }`}>
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-medium leading-[1.2] tracking-tight text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] max-w-3xl">
                       {lastMessage.text}
                     </h2>
                   </motion.div>
@@ -931,9 +852,9 @@ function App() {
               <Lock className="w-5 h-5" />
             </button>
 
-            {/* FUN MODE BUTTON (Enhanced) */}
-            <button onClick={() => setViewMode('scenario')} className="w-20 h-20 rounded-full flex items-center justify-center bg-[#2540CF] hover:bg-[#1E33A5] text-white shadow-[0_0_40px_rgba(37,64,207,0.6)] hover:shadow-[0_0_60px_rgba(37,64,207,0.8)] transition-all group relative z-50 border border-white/20 hover:scale-110" title="Enter Fun Mode">
-              <Sparkles className="w-10 h-10 animate-pulse" />
+            {/* FUN MODE BUTTON (Existing) */}
+            <button onClick={() => setViewMode('scenario')} className="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-white/10 text-white/40 hover:text-white transition-all shadow-2xl group relative z-50" title="Fun Mode">
+              <SlidersHorizontal className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" />
             </button>
 
             {/* PROMO ARROW - Pointing to Fun Mode */}
@@ -941,7 +862,7 @@ function App() {
               initial={{ x: -10, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 1 }}
-              className="absolute top-28 right-[-34px] flex flex-col items-center pointer-events-none w-32"
+              className="absolute top-16 right-[-34px] flex flex-col items-center pointer-events-none w-32"
             >
               <div className="text-[10px] font-black tracking-widest text-yellow-400 mb-1 animate-pulse">TRY FUN MODE</div>
               <svg className="w-6 h-6 text-yellow-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
@@ -1083,7 +1004,53 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* FIXED BOTTOM CONSOLE - Removed and integrated above */}
+      {/* FIXED BOTTOM CONSOLE */}
+      {
+        viewMode === 'home' && (
+          <div className="fixed bottom-12 left-0 right-0 z-50 flex justify-center px-6">
+            <div className="w-full max-w-4xl relative group">
+              <div className={`absolute -inset-1 rounded-full bg-gradient-to-r ${activePersona.color} opacity-0 group-focus-within:opacity-20 blur-xl transition-all duration-1000`} />
+
+              <div className="relative w-full bg-black/80 backdrop-blur-3xl border border-white/10 rounded-full flex items-center shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
+
+                <input
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend(inputText)}
+                  placeholder={`Direct message to ${activePersona.name === 'Headquarters' ? 'Headquarters' : activePersona.name}...`}
+                  className="flex-1 bg-white/10 h-[70px] md:h-[90px] px-10 text-xl text-white placeholder-white/40 focus:outline-none font-light tracking-wide rounded-l-full"
+                />
+
+                <div className="flex items-center gap-4 pr-6">
+                  <AnimatePresence>
+                    {inputText && (
+                      <motion.button
+                        initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                        onClick={() => handleSend(inputText)}
+                        className="p-3 rounded-full bg-white/10 hover:bg-white text-white hover:text-black transition-all"
+                      >
+                        <Send className="w-5 h-5" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    onClick={toggleCall}
+                    className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
+                        ${callActiveState
+                        ? 'bg-red-600 text-white shadow-[0_0_30px_rgba(220,38,38,0.5)] animate-pulse'
+                        : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white'
+                      }
+                      `}
+                  >
+                    {callActiveState ? <PhoneOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 }
