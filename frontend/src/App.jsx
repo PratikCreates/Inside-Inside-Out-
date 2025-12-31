@@ -580,7 +580,7 @@ function App() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-blue-900/30 border border-cyan-400/30 backdrop-blur-2xl rounded-3xl shadow-[0_0_100px_rgba(96,165,250,0.4)] overflow-hidden relative p-12 z-10"
+              className="w-full max-w-2xl bg-blue-900/30 border border-cyan-400/30 backdrop-blur-2xl rounded-3xl shadow-[0_0_100px_rgba(96,165,250,0.4)] overflow-hidden relative p-6 md:p-12 z-10"
             >
               {/* Close Button */}
               <button
@@ -596,7 +596,7 @@ function App() {
                   <Sparkles className="w-5 h-5 text-cyan-400" />
                   <h2 className="text-sm font-bold tracking-[0.3em] uppercase text-cyan-300/80">Fun Mode</h2>
                 </div>
-                <h1 className="text-4xl font-black text-white mb-2">What's on your mind?</h1>
+                <h1 className="text-2xl md:text-4xl font-black text-white mb-2">What's on your mind?</h1>
                 <p className="text-blue-200/80 text-base">Watch your emotions discuss it live</p>
               </div>
 
@@ -606,7 +606,7 @@ function App() {
                 <textarea
                   id="scenario-topic"
                   placeholder="Type something or pick a suggestion..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl p-5 text-2xl font-semibold text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-all resize-none min-h-[120px] leading-tight"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 md:p-5 text-lg md:text-2xl font-semibold text-white placeholder-white/20 focus:outline-none focus:border-white/30 transition-all resize-none min-h-[100px] md:min-h-[120px] leading-tight"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -685,7 +685,7 @@ function App() {
           <div className="flex-1 w-full flex flex-col items-center justify-center relative z-20 pb-20">
 
             {/* CORE UNIT: Hero + Agents (Grouped to move together) */}
-            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-32">
+            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-20 md:-mt-32">
 
               {/* 1. HERO VISUAL */}
               <AnimatePresence mode="wait">
@@ -752,8 +752,8 @@ function App() {
 
               {/* 2. ENLARGED COMMAND DECK - Floating below Hero */}
               {!isProcessing && (
-                <div className="flex flex-col items-center gap-4 group mt-4">
-                  <div className="flex gap-4 md:gap-8 justify-center items-center px-12 py-6 rounded-[3rem] bg-neutral-900/80 border border-white/20 backdrop-blur-3xl shadow-[0_30px_80px_rgba(0,0,0,0.9)] transition-all hover:bg-neutral-900/90 border-t-white/30 ring-1 ring-white/5">
+                <div className="flex flex-col items-center gap-4 group mt-4 w-full">
+                  <div className="flex flex-wrap gap-2 md:gap-8 justify-center items-center px-4 md:px-12 py-4 md:py-6 rounded-2xl md:rounded-[3rem] bg-neutral-900/80 border border-white/20 backdrop-blur-3xl shadow-[0_30px_80px_rgba(0,0,0,0.9)] transition-all hover:bg-neutral-900/90 border-t-white/30 ring-1 ring-white/5 mx-2">
                     {PERSONAS.filter(p => p.name !== "Headquarters").map(p => {
                       const isSelected = selectedPersonas.includes(p.name)
                       return (
@@ -763,7 +763,7 @@ function App() {
                             if (isSelected) setSelectedPersonas(prev => prev.filter(n => n !== p.name))
                             else setSelectedPersonas(prev => [...prev, p.name])
                           }}
-                          className={`relative w-16 h-16 md:w-24 md:h-24 rounded-full transition-all duration-500 flex items-center justify-center group/btn ${isSelected ? 'scale-110 ring-4 ring-white/30 z-10' : 'scale-90 opacity-20 hover:opacity-100 grayscale hover:grayscale-0'}`}
+                          className={`relative w-12 h-12 md:w-24 md:h-24 rounded-full transition-all duration-500 flex items-center justify-center group/btn ${isSelected ? 'scale-110 ring-2 md:ring-4 ring-white/30 z-10' : 'scale-90 opacity-20 hover:opacity-100 grayscale hover:grayscale-0'}`}
                         >
                           <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${p.color} blur-2xl opacity-0 group-hover/btn:opacity-60 transition-opacity`} />
                           <div className={`relative z-10 w-full h-full rounded-full bg-gradient-to-br ${p.color} flex items-center justify-center text-white shadow-2xl border-2 border-white/20 hover:border-white/50 transition-all`}>
@@ -780,10 +780,10 @@ function App() {
                         </button>
                       )
                     })}
-                    <div className="w-[1px] h-20 bg-white/10 mx-2" />
+                    <div className="w-[1px] h-12 md:h-20 bg-white/10 mx-1 md:mx-2" />
                     <button
                       onClick={() => setSelectedPersonas(PERSONAS.filter(p => p.name !== 'Headquarters').map(p => p.name))}
-                      className="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:text-white hover:bg-white/10 transition-all text-3xl" title="Reset All"
+                      className="w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/30 hover:text-white hover:bg-white/10 transition-all text-xl md:text-3xl" title="Reset All"
                     >
                       ↺
                     </button>
@@ -839,7 +839,7 @@ function App() {
       </main>
 
       {/* FIXED TOP TOOLS */}
-      <div className="fixed top-8 right-8 z-50">
+      <div className="fixed top-4 right-4 md:top-8 md:right-8 z-50">
         {isProcessing && abortDebateRef.current === false ? (
           <button onClick={stopDebate} className="flex items-center gap-4 px-8 py-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-black shadow-2xl transition-all border border-red-400/50 backdrop-blur-xl group">
             <div className="w-3 h-3 bg-white rounded-full animate-pulse group-hover:scale-125 transition-transform" />
@@ -862,7 +862,7 @@ function App() {
               initial={{ x: -10, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 1 }}
-              className="absolute top-16 right-[-34px] flex flex-col items-center pointer-events-none w-32"
+              className="absolute top-16 right-[-34px] hidden md:flex flex-col items-center pointer-events-none w-32"
             >
               <div className="text-[10px] font-black tracking-widest text-yellow-400 mb-1 animate-pulse">TRY FUN MODE</div>
               <svg className="w-6 h-6 text-yellow-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
@@ -1018,7 +1018,7 @@ function App() {
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend(inputText)}
                   placeholder={`Direct message to ${activePersona.name === 'Headquarters' ? 'Headquarters' : activePersona.name}...`}
-                  className="flex-1 bg-white/10 h-[70px] md:h-[90px] px-10 text-xl text-white placeholder-white/40 focus:outline-none font-light tracking-wide rounded-l-full"
+                  className="flex-1 bg-white/10 h-[60px] md:h-[90px] px-6 md:px-10 text-lg md:text-xl text-white placeholder-white/40 focus:outline-none font-light tracking-wide rounded-l-full"
                 />
 
                 <div className="flex items-center gap-4 pr-6">
