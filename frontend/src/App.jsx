@@ -710,7 +710,7 @@ function App() {
           <div className="flex-1 w-full flex flex-col items-center justify-center relative z-20 pb-8">
 
             {/* CORE UNIT: Hero + Agents (Grouped to move together) */}
-            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-40">
+            <div className="flex flex-col items-center space-y-5 mb-10 w-full -mt-20">
 
               {/* 1. HERO VISUAL */}
               <AnimatePresence mode="wait">
@@ -777,7 +777,7 @@ function App() {
 
               {/* 2. ENLARGED COMMAND DECK - Below Hero, closer spacing */}
               {!isProcessing && (
-                <div className="flex flex-col items-center gap-4 group mt-4">
+                <div className="flex flex-col items-center gap-4 group mt-12">
                   <div className="flex gap-4 md:gap-8 justify-center items-center px-12 py-6 rounded-[3rem] bg-neutral-900/80 border border-white/20 backdrop-blur-3xl shadow-[0_30px_80px_rgba(0,0,0,0.9)] transition-all hover:bg-neutral-900/90 border-t-white/30 ring-1 ring-white/5">
                     {PERSONAS.filter(p => p.name !== "Headquarters").map(p => {
                       const isSelected = selectedPersonas.includes(p.name)
