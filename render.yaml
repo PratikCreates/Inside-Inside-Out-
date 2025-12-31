@@ -1,0 +1,39 @@
+services:
+  # Backend API
+  - type: web
+    name: insideout-backend
+    runtime: python
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: VOICE_ID_JOY
+        value: rtza1NeU17DKF7sf5ZAu
+      - key: VOICE_ID_SADNESS
+        value: AZnzlk1XvdvUeBnXmlld
+      - key: VOICE_ID_ANGER
+        value: PFfIjUGsWsT9uQNYM0Vr
+      - key: VOICE_ID_FEAR
+        value: GbbQErkqwE6P1x11Ol4I
+      - key: VOICE_ID_DISGUST
+        value: Zbqlr4MtsuNf9UAxsv2G
+
+  # Frontend Static Site
+  - type: web
+    name: insideout-frontend
+    runtime: node
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: insideout-backend
+          envVarKey: RENDER_EXTERNAL_URL
